@@ -77,14 +77,25 @@
             B2: +1萬 | 3M/Clean: +2萬 | Ultra: +4萬
           </p>
 
-          <!-- 儲存按鈕 -->
-          <button 
-            id="saveCarBtn"
-            class="mt-5 w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-2.5 px-4 rounded-lg transition-all text-sm flex justify-center items-center gap-2 border border-gray-600 shadow-sm"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-            儲存此車款與價格
-          </button>
+          <!-- 按鈕區塊 -->
+          <div class="mt-5 flex gap-2">
+            <button 
+              id="saveCarBtn"
+              data-state="idle"
+              class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2.5 px-4 rounded-lg transition-all text-sm flex justify-center items-center gap-2 border border-gray-600 shadow-sm"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+              儲存此車款與價格
+            </button>
+            <button 
+              id="deleteCarBtn"
+              data-confirm="false"
+              class="hidden bg-red-900/30 hover:bg-red-800/80 text-red-300 font-medium py-2.5 px-4 rounded-lg transition-all text-sm flex justify-center items-center gap-1 border border-red-800/50 shadow-sm whitespace-nowrap"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+              刪除
+            </button>
+          </div>
         </div>
       </div>
       
@@ -124,7 +135,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // Firebase 初始化 (使用您的專屬設定)
     const firebaseConfig = {
@@ -148,6 +159,7 @@
     const basePriceEl = document.getElementById('basePrice');
     const savedCarsSelect = document.getElementById('savedCarsSelect');
     const saveCarBtn = document.getElementById('saveCarBtn');
+    const deleteCarBtn = document.getElementById('deleteCarBtn');
     const quoteOutputEl = document.getElementById('quoteOutput');
     const copyBtn = document.getElementById('copyBtn');
     const copyIcon = document.getElementById('copyIcon');
@@ -165,6 +177,39 @@
         option.textContent = `${car.name} ($${formatPrice(car.price)})`;
         savedCarsSelect.appendChild(option);
       });
+      updateActionButtons();
+    };
+
+    // --- 動態按鈕 UI 邏輯 ---
+    const saveIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>';
+    const deleteIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>';
+    let deleteTimeout;
+
+    const resetDeleteBtn = () => {
+      deleteCarBtn.dataset.confirm = "false";
+      deleteCarBtn.innerHTML = `${deleteIcon} 刪除`;
+      deleteCarBtn.classList.replace('bg-red-600', 'bg-red-900/30');
+      deleteCarBtn.classList.replace('text-white', 'text-red-300');
+      clearTimeout(deleteTimeout);
+    };
+
+    const updateActionButtons = () => {
+      const name = carNameEl.value.trim();
+      const existingCar = carDatabase.find(c => c.name === name);
+      
+      // 若正在儲存或報錯狀態中，不更動按鈕
+      if (saveCarBtn.dataset.state !== 'idle') return;
+
+      if (existingCar) {
+        saveCarBtn.innerHTML = `${saveIcon} 更新此車款價格`;
+        saveCarBtn.className = 'flex-1 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg transition-all text-sm flex justify-center items-center gap-2 border border-blue-500 shadow-sm';
+        deleteCarBtn.classList.remove('hidden');
+      } else {
+        saveCarBtn.innerHTML = `${saveIcon} 儲存新車款`;
+        saveCarBtn.className = 'flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-2.5 px-4 rounded-lg transition-all text-sm flex justify-center items-center gap-2 border border-gray-600 shadow-sm';
+        deleteCarBtn.classList.add('hidden');
+        resetDeleteBtn();
+      }
     };
 
     // 監聽下拉選單變化
@@ -176,6 +221,40 @@
         basePriceEl.value = car.price;
         generateQuoteText();
       }
+      updateActionButtons();
+    });
+
+    // 刪除車款功能
+    deleteCarBtn.addEventListener('click', async () => {
+      if (!currentUser) return;
+      const name = carNameEl.value.trim();
+      const existingCar = carDatabase.find(c => c.name === name);
+      if (!existingCar) return;
+
+      if (deleteCarBtn.dataset.confirm === "true") {
+        try {
+          deleteCarBtn.innerHTML = '刪除中...';
+          await deleteDoc(doc(db, 'users', currentUser.uid, 'savedCars', existingCar.id));
+          
+          carNameEl.value = '';
+          basePriceEl.value = '100000';
+          savedCarsSelect.value = "";
+          generateQuoteText();
+          resetDeleteBtn();
+          updateActionButtons();
+        } catch (error) {
+          console.error("刪除失敗", error);
+        }
+      } else {
+        // 第一次點擊：請求確認
+        deleteCarBtn.dataset.confirm = "true";
+        deleteCarBtn.innerHTML = '確定要刪除？';
+        deleteCarBtn.classList.replace('bg-red-900/30', 'bg-red-600');
+        deleteCarBtn.classList.replace('text-red-300', 'text-white');
+        
+        clearTimeout(deleteTimeout);
+        deleteTimeout = setTimeout(resetDeleteBtn, 3000); // 3秒後恢復原狀
+      }
     });
 
     // 儲存車款功能
@@ -183,13 +262,27 @@
       const name = carNameEl.value.trim();
       const price = Number(basePriceEl.value);
       
-      if (!name || !price || !currentUser) return; // 簡單防呆
+      if (!name || !price) return; // 簡單防呆
+
+      // 檢查是否成功連線 Firebase
+      if (!currentUser) {
+        saveCarBtn.dataset.state = 'error';
+        const originalContent = saveCarBtn.innerHTML;
+        saveCarBtn.innerHTML = '⚠️ 資料庫未連線，請確認 Firebase 設定';
+        saveCarBtn.className = 'flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all text-sm flex justify-center items-center gap-2 border border-red-600 shadow-sm';
+        setTimeout(() => {
+          saveCarBtn.dataset.state = 'idle';
+          updateActionButtons();
+        }, 3000);
+        return;
+      }
 
       // 儲存至雲端資料庫
       const existingCar = carDatabase.find(c => c.name === name);
       const docId = existingCar && existingCar.id ? existingCar.id : crypto.randomUUID();
 
       try {
+        saveCarBtn.dataset.state = 'saving';
         saveCarBtn.innerHTML = '儲存中...';
         // 簡化您專屬資料庫的存取路徑
         const carDocRef = doc(db, 'users', currentUser.uid, 'savedCars', docId);
@@ -202,17 +295,12 @@
         }, 300);
 
         // 按鈕視覺回饋
-        const originalContent = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> 儲存此車款與價格';
         saveCarBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> 已儲存至雲端！';
-        saveCarBtn.classList.replace('bg-gray-700', 'bg-green-600');
-        saveCarBtn.classList.replace('hover:bg-gray-600', 'hover:bg-green-500');
-        saveCarBtn.classList.replace('border-gray-600', 'border-green-500');
+        saveCarBtn.className = 'flex-1 bg-green-600 hover:bg-green-500 text-white font-medium py-2.5 px-4 rounded-lg transition-all text-sm flex justify-center items-center gap-2 border border-green-500 shadow-sm';
 
         setTimeout(() => {
-          saveCarBtn.innerHTML = originalContent;
-          saveCarBtn.classList.replace('bg-green-600', 'bg-gray-700');
-          saveCarBtn.classList.replace('hover:bg-green-500', 'hover:bg-gray-600');
-          saveCarBtn.classList.replace('border-green-500', 'border-gray-600');
+          saveCarBtn.dataset.state = 'idle';
+          updateActionButtons(); // 恢復後自動判斷要顯示的文字與顏色
         }, 2000);
       } catch (error) {
         console.error("儲存失敗:", error);
@@ -256,7 +344,21 @@
 
     // 監聽輸入框變化事件，即時更新報價單
     quoteTypeEl.addEventListener('change', generateQuoteText);
-    carNameEl.addEventListener('input', generateQuoteText);
+    
+    carNameEl.addEventListener('input', () => {
+      generateQuoteText();
+      updateActionButtons();
+      
+      // 如果輸入的名稱剛好吻合已儲存的車款，同步更新下拉選單
+      const name = carNameEl.value.trim();
+      const existingIndex = carDatabase.findIndex(c => c.name === name);
+      if (existingIndex >= 0) {
+        savedCarsSelect.value = existingIndex;
+      } else {
+        savedCarsSelect.value = "";
+      }
+    });
+
     basePriceEl.addEventListener('input', generateQuoteText);
 
     // 複製到剪貼簿功能
@@ -307,7 +409,10 @@
       } catch (error) {
         console.error("登入失敗:", error);
         if(error.code === 'auth/operation-not-allowed') {
-           alert("提示：請至 Firebase 控制台的 Authentication 啟用「匿名登入 (Anonymous)」！");
+           // 替換掉原本被阻擋的 alert，改為直接改變按鈕外觀
+           saveCarBtn.innerHTML = '⚠️ 請至 Firebase 啟用「匿名登入」';
+           saveCarBtn.classList.replace('bg-gray-700', 'bg-red-600');
+           saveCarBtn.classList.replace('hover:bg-gray-600', 'hover:bg-red-700');
         }
       }
     };
