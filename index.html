@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>汽車包膜報價單產生器</title>
+  <!-- 引入 Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen p-4 md:p-8">
+
+  <div class="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 flex flex-col md:flex-row">
+    
+    <!-- 左側：控制面板 (表單輸入) -->
+    <div class="w-full md:w-1/3 bg-gray-900 p-6 md:p-8 text-white flex flex-col gap-6">
+      <div>
+        <h1 class="text-2xl font-bold mb-2 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+          報價單產生器
+        </h1>
+        <p class="text-gray-400 text-sm">請輸入車款與基準價格，系統將自動計算並生成給客人的訊息。</p>
+      </div>
+
+      <div class="flex flex-col gap-4">
+        
+        <!-- 已儲存車款下拉選單 -->
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-1">已儲存車款 (快速載入)</label>
+          <select 
+            id="savedCarsSelect"
+            class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all mb-2"
+          >
+            <!-- 由 JS 動態產生 -->
+          </select>
+        </div>
+
+        <!-- 報價單類型選擇 -->
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-1">報價單類型</label>
+          <select 
+            id="quoteType"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          >
+            <option value="full-ppf">全車犀牛皮 (透明/霧面)</option>
+            <option value="full-color">全車改色 (一般改色膜)</option>
+            <option value="full-color-ppf">全車犀牛皮改色 (有色TPU)</option>
+            <option value="partial">迎風面 / 局部包膜</option>
+          </select>
+        </div>
+
+        <!-- 車款名稱輸入框 -->
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-1">車款名稱</label>
+          <input 
+            type="text" 
+            id="carName"
+            value="KIA sprotage 油電版"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            placeholder="例如：KIA sprotage 油電版"
+          />
+        </div>
+
+        <!-- 基準價格輸入框 -->
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-1">
+            BOZZT A2plus 基準價格 ($)
+          </label>
+          <input 
+            type="number" 
+            id="basePrice"
+            value="100000"
+            class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            placeholder="例如：100000"
+          />
+          <p class="text-xs text-gray-500 mt-2">
+            其他品項會自動依此基準值加價：<br/>
+            B2: +1萬 | 3M/Clean: +2萬 | Ultra: +4萬
+          </p>
+
+          <!-- 儲存按鈕 -->
+          <button 
+            id="saveCarBtn"
+            class="mt-5 w-full bg-gray-700 hover:bg-gray-600 text-white font-medium py-2.5 px-4 rounded-lg transition-all text-sm flex justify-center items-center gap-2 border border-gray-600 shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            儲存此車款與價格
+          </button>
+        </div>
+      </div>
+      
+      <div class="mt-auto pt-8 border-t border-gray-800 hidden md:block">
+        <p class="text-xs text-gray-500 text-center">自動化流程，提升接單效率</p>
+      </div>
+    </div>
+
+    <!-- 右側：預覽與複製區塊 -->
+    <div class="w-full md:w-2/3 p-6 md:p-8 flex flex-col bg-white">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500"><path d="M2 12h4l3-9 5 18 3-9h5"/></svg>
+          預覽報價訊息
+        </h2>
+        <button 
+          id="copyBtn"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg"
+        >
+          <svg id="copyIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          <span id="copyText">複製報價單</span>
+        </button>
+      </div>
+
+      <div class="relative flex-grow">
+        <textarea
+          id="quoteOutput"
+          readonly
+          class="w-full h-full min-h-[500px] p-5 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-100 leading-relaxed shadow-inner"
+          style="white-space: pre-wrap;"
+        ></textarea>
+      </div>
+    </div>
+    
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInWithCustomToken, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Firebase 初始化 (使用您的專屬設定)
+    const firebaseConfig = {
+      apiKey: "AIzaSyAfW0eAYmHIZV1MwRJ3RlfrqP_0Lk16EJA",
+      authDomain: "my-first-car-quotation.firebaseapp.com",
+      projectId: "my-first-car-quotation",
+      storageBucket: "my-first-car-quotation.firebasestorage.app",
+      messagingSenderId: "992586974554",
+      appId: "1:992586974554:web:c65ccac685a2c4bc295f63"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    
+    let currentUser = null;
+    let unsubscribeSnapshot = null;
+
+    // 獲取 DOM 元素
+    const quoteTypeEl = document.getElementById('quoteType');
+    const carNameEl = document.getElementById('carName');
+    const basePriceEl = document.getElementById('basePrice');
+    const savedCarsSelect = document.getElementById('savedCarsSelect');
+    const saveCarBtn = document.getElementById('saveCarBtn');
+    const quoteOutputEl = document.getElementById('quoteOutput');
+    const copyBtn = document.getElementById('copyBtn');
+    const copyIcon = document.getElementById('copyIcon');
+    const copyText = document.getElementById('copyText');
+
+    // 暫存的車款資料庫 (記憶體中)
+    let carDatabase = [];
+
+    // 更新下拉選單
+    const renderSavedCars = () => {
+      savedCarsSelect.innerHTML = '<option value="">-- 請選擇已儲存車款 或 自行輸入 --</option>';
+      carDatabase.forEach((car, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = `${car.name} ($${formatPrice(car.price)})`;
+        savedCarsSelect.appendChild(option);
+      });
+    };
+
+    // 監聽下拉選單變化
+    savedCarsSelect.addEventListener('change', (e) => {
+      const selectedIndex = e.target.value;
+      if (selectedIndex !== '') {
+        const car = carDatabase[selectedIndex];
+        carNameEl.value = car.name;
+        basePriceEl.value = car.price;
+        generateQuoteText();
+      }
+    });
+
+    // 儲存車款功能
+    saveCarBtn.addEventListener('click', async () => {
+      const name = carNameEl.value.trim();
+      const price = Number(basePriceEl.value);
+      
+      if (!name || !price || !currentUser) return; // 簡單防呆
+
+      // 儲存至雲端資料庫
+      const existingCar = carDatabase.find(c => c.name === name);
+      const docId = existingCar && existingCar.id ? existingCar.id : crypto.randomUUID();
+
+      try {
+        saveCarBtn.innerHTML = '儲存中...';
+        // 簡化您專屬資料庫的存取路徑
+        const carDocRef = doc(db, 'users', currentUser.uid, 'savedCars', docId);
+        await setDoc(carDocRef, { name, price });
+
+        // 將選單停留在剛儲存的車款上 (稍等雲端同步)
+        setTimeout(() => {
+          const newIndex = carDatabase.findIndex(c => c.name === name);
+          if (newIndex >= 0) savedCarsSelect.value = newIndex;
+        }, 300);
+
+        // 按鈕視覺回饋
+        const originalContent = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg> 儲存此車款與價格';
+        saveCarBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> 已儲存至雲端！';
+        saveCarBtn.classList.replace('bg-gray-700', 'bg-green-600');
+        saveCarBtn.classList.replace('hover:bg-gray-600', 'hover:bg-green-500');
+        saveCarBtn.classList.replace('border-gray-600', 'border-green-500');
+
+        setTimeout(() => {
+          saveCarBtn.innerHTML = originalContent;
+          saveCarBtn.classList.replace('bg-green-600', 'bg-gray-700');
+          saveCarBtn.classList.replace('hover:bg-green-500', 'hover:bg-gray-600');
+          saveCarBtn.classList.replace('border-green-500', 'border-gray-600');
+        }, 2000);
+      } catch (error) {
+        console.error("儲存失敗:", error);
+      }
+    });
+
+    // 格式化數字為貨幣格式 (例如：100000 -> 100,000)
+    const formatPrice = (price) => {
+      return Number(price).toLocaleString('en-US');
+    };
+
+    // 產生報價單文字內容
+    const generateQuoteText = () => {
+      const quoteType = quoteTypeEl.value;
+      const carName = carNameEl.value || '未填寫車款';
+      const basePrice = Number(basePriceEl.value) || 0;
+      
+      let resultText = '';
+
+      switch (quoteType) {
+        case 'full-color':
+          resultText = ` ${carName} 全車改色施工報價單\n\n▌ 改色膜品牌與報價\n(🚧系統擴充中：請提供您常用的「改色膜品牌」、「加價規則」與「保固說明」)\n範例品牌 A： $${formatPrice(basePrice)}\n範例品牌 B： $${formatPrice(basePrice + 5000)}\n\n▌ 施工備註與贈品\n施工範圍：全車烤漆鈑件外觀。\n(請將完整的備註文字提供給我，我幫您設定上去)`;
+          break;
+
+        case 'full-color-ppf':
+          resultText = ` ${carName} 全車犀牛皮改色(有色PPF)施工報價單\n\n▌ 有色犀牛皮品牌與報價\n(🚧系統擴充中：請提供「有色犀牛皮品牌」、「加價規則」與「保固說明」)\n範例品牌 C： $${formatPrice(basePrice + 30000)}\n\n▌ 施工備註與贈品\n(請將完整的備註文字提供給我，我幫您設定上去)`;
+          break;
+
+        case 'partial':
+          resultText = ` ${carName} 迎風面/局部包膜施工報價單\n\n▌ 施工部位與報價\n(🚧系統擴充中：您可以設定局部包膜的選項，例如：迎風面固定佔全車價格的比例，或是固定價格)\n【 迎風面 】(引擎蓋、葉子板、前保桿、後照鏡)\n BOZZT A2plus： $${formatPrice(basePrice * 0.4)}\n 3M 200G： $${formatPrice((basePrice + 20000) * 0.4)}\n\n▌ 施工備註與贈品\n(請將完整的備註文字提供給我，我幫您設定上去)`;
+          break;
+
+        case 'full-ppf':
+        default:
+          resultText = ` ${carName} 全車犀牛皮施工報價單\n\n▌ 推薦首選\n\n【 BOZZT A2plus 高透亮面透明保護膜 】\n 規格： 厚度 7.5 mu\n 保固： 5 年\n 報價： $${formatPrice(basePrice)}\n\n【 BOZZT B2 霧面透明保護膜 】\n 規格： 厚度 8 mu\n 保固： 5 年\n 報價： $${formatPrice(basePrice + 10000)}\n\n▌ 國際品牌\n【 3M 200G 高透亮面透明保護膜】\n 規格： 厚度 7.5 mu\n 保固： 5 年\n 報價： $${formatPrice(basePrice + 20000)}\n【 SUNTEK Clean 系列 高透亮面透明保護膜 】\n 規格： 厚度 7.5 mu\n 保固： 5 年\n 報價： $${formatPrice(basePrice + 20000)}\n【 SUNTEK Ultra 系列 高透亮面透明保護膜 】\n 規格： 厚度 8 mu\n 保固： 10 年\n 報價： $${formatPrice(basePrice + 40000)}\n\n(以上為亮面價格，霧面價格皆再加$10,000)\n\n▌ 施工備註與贈品\n\n施工範圍：\n\n全車烤漆鈑件。\n不含： 塑膠件、內裝、鋼琴烤漆、尾燈、把手。\n\n全車施工贈品：\n\n1.BC 柱透明保護膜\n2.銀幕透明保護膜\n3.玻璃鍍膜（一年期）`;
+          break;
+      }
+
+      quoteOutputEl.value = resultText;
+    };
+
+    // 監聽輸入框變化事件，即時更新報價單
+    quoteTypeEl.addEventListener('change', generateQuoteText);
+    carNameEl.addEventListener('input', generateQuoteText);
+    basePriceEl.addEventListener('input', generateQuoteText);
+
+    // 複製到剪貼簿功能
+    copyBtn.addEventListener('click', () => {
+      quoteOutputEl.select();
+      document.execCommand('copy');
+      
+      // 改變按鈕狀態為已複製
+      copyBtn.className = 'flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 bg-green-100 text-green-700 border border-green-200';
+      copyIcon.innerHTML = '<polyline points="20 6 9 17 4 12"></polyline>';
+      copyText.innerText = '已複製！';
+
+      // 2秒後恢復原狀
+      setTimeout(() => {
+        copyBtn.className = 'flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 bg-blue-600 text-white hover:bg-blue-700 shadow-md hover:shadow-lg';
+        copyIcon.innerHTML = '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>';
+        copyText.innerText = '複製報價單';
+      }, 2000);
+    });
+
+    // --- 雲端同步與驗證邏輯 ---
+    const loadCarsFromCloud = () => {
+      if (!currentUser) return;
+      
+      // 簡化您專屬資料庫的讀取路徑
+      const carsCollectionRef = collection(db, 'users', currentUser.uid, 'savedCars');
+
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+
+      unsubscribeSnapshot = onSnapshot(carsCollectionRef, (snapshot) => {
+        carDatabase = [];
+        snapshot.forEach((doc) => {
+          carDatabase.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // 排序：依據車款名稱
+        carDatabase.sort((a, b) => a.name.localeCompare(b.name));
+        renderSavedCars();
+      }, (error) => {
+        console.error("讀取車款資料失敗:", error);
+      });
+    };
+
+    const initAuth = async () => {
+      try {
+        // 使用您自己的 Firebase，改為最簡單的匿名登入
+        await signInAnonymously(auth);
+      } catch (error) {
+        console.error("登入失敗:", error);
+        if(error.code === 'auth/operation-not-allowed') {
+           alert("提示：請至 Firebase 控制台的 Authentication 啟用「匿名登入 (Anonymous)」！");
+        }
+      }
+    };
+
+    initAuth();
+
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      if (user) {
+        loadCarsFromCloud();
+      } else if (unsubscribeSnapshot) {
+        unsubscribeSnapshot();
+        unsubscribeSnapshot = null;
+      }
+    });
+
+    // 頁面載入時先產生一次初始報價單
+    generateQuoteText();
+  </script>
+</body>
+</html>
